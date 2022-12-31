@@ -1,13 +1,18 @@
 package proxy
 
 import (
+	"fmt"
+	"github.com/spf13/viper"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"time"
 )
 
-func Serve(w http.ResponseWriter, r *http.Request){
+func Serve(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("new con")
+
 	if r.Method == http.MethodConnect {
 		handleHttps(w, r)
 	} else {
@@ -15,9 +20,34 @@ func Serve(w http.ResponseWriter, r *http.Request){
 	}
 
 }
+func DialCustom(network, address string, timeout time.Duration, localIP []byte) (net.Conn, error) {
 
-func handleHttps(w http.ResponseWriter, r *http.Request){
-	destConn, err := net.DialTimeout("tcp", r.Host, 60*time.Second)
+	netAddr := &net.TCPAddr{}
+
+	if len(localIP) != 0 {
+		netAddr.IP = localIP
+	}
+
+	fmt.Println("netAddr:", netAddr)
+
+	d := net.Dialer{Timeout: timeout, LocalAddr: netAddr}
+	return d.Dial(network, address)
+}
+
+func getRandomIp() net.IP {
+	ipList := viper.GetStringSlice("app.ip_list")
+	rand.Seed(time.Now().Unix())
+	ipStr := ipList[rand.Intn(len(ipList))]
+	ip := net.ParseIP(ipStr)
+	return ip
+}
+
+func handleHttps(w http.ResponseWriter, r *http.Request) {
+
+	localIP := getRandomIp()
+
+	destConn, err := DialCustom("tcp", r.Host, time.Second*10, localIP)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
@@ -39,7 +69,7 @@ func handleHttps(w http.ResponseWriter, r *http.Request){
 
 }
 
-func handleHttp(w http.ResponseWriter, r *http.Request){
+func handleHttp(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.DefaultTransport.RoundTrip(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -66,5 +96,3 @@ func copyHeader(dst, src http.Header) {
 		}
 	}
 }
-
-

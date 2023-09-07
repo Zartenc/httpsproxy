@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"httpsproxy/httpsserve"
+	"httpsproxy/socket5"
 	"log"
 	"net"
 	"os"
@@ -32,7 +33,11 @@ func main() {
 		logger.Fatal("监听端口失败")
 	}
 
-	httpsserve.Serve(listenAddress)
+	if viper.GetString("app.type") == "http" {
+		httpsserve.Serve(listenAddress)
+	} else {
+		socket5.Serve(listenAddress)
+	}
 
 }
 

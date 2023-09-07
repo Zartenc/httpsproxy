@@ -20,11 +20,11 @@ func Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-func DialCustom(network, address string, timeout time.Duration, localIP []byte) (net.Conn, error) {
+func DialCustom(network, address string, timeout time.Duration, localIP net.IP) (net.Conn, error) {
 
 	netAddr := &net.TCPAddr{}
 
-	if len(localIP) != 0 {
+	if localIP != nil {
 		netAddr.IP = localIP
 	}
 
@@ -34,17 +34,17 @@ func DialCustom(network, address string, timeout time.Duration, localIP []byte) 
 	return d.Dial(network, address)
 }
 
-func getRandomIp() net.IP {
+func GetRandomIp() net.IP {
 	ipList := viper.GetStringSlice("app.ip_list")
-	rand.Seed(time.Now().Unix())
-	ipStr := ipList[rand.Intn(len(ipList))]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	ipStr := ipList[r.Intn(len(ipList))]
 	ip := net.ParseIP(ipStr)
 	return ip
 }
 
 func handleHttps(w http.ResponseWriter, r *http.Request) {
 
-	localIP := getRandomIp()
+	localIP := GetRandomIp()
 
 	destConn, err := DialCustom("tcp", r.Host, time.Second*10, localIP)
 

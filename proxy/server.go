@@ -36,8 +36,10 @@ func DialCustom(network, address string, timeout time.Duration, localIP net.IP) 
 
 func GetRandomIp() net.IP {
 	ipList := viper.GetStringSlice("app.ip_list")
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	ipStr := ipList[r.Intn(len(ipList))]
+
 	ip := net.ParseIP(ipStr)
 	return ip
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
-	"flag"
+	"fmt"
+	"github.com/spf13/viper"
 	"httpsproxy/httpsserve"
+	"httpsproxy/socket5"
 	"log"
 	"net"
 	"os"
@@ -10,24 +12,51 @@ import (
 
 var logger = log.New(os.Stderr, "httpsproxy:", log.Llongfile|log.LstdFlags)
 
-func main(){
-	var listenAdress string
-	flag.StringVar(&listenAdress, "L", "0.0.0.0:8080", "listen address.eg: 127.0.0.1:8080")
-	flag.Parse()
+func init() {
+	initConfig()
+}
 
-	if !checkAdress(listenAdress){
-		logger.Fatal("-L listen address format incorrect.Please check it")
+func main() {
+	listenAddress := viper.GetString("app.listenAddress")
+	fmt.Println("开始监听端口:", listenAddress)
+	if !checkAddress(listenAddress) {
+		logger.Fatal("监听端口失败")
 	}
 
-	httpsserve.Serve(listenAdress)
+	ipList := viper.GetStringSlice("app.ip_list")
+	fmt.Println("代理ip数:", len(ipList))
+	if len(ipList) < 1 {
+		logger.Fatal("代理ip不能为空")
+	}
+
+	if !checkAddress(listenAddress) {
+		logger.Fatal("监听端口失败")
+	}
+
+	if viper.GetString("app.type") == "http" {
+		httpsserve.Serve(listenAddress)
+	} else {
+		socket5.Serve(listenAddress)
+	}
 
 }
 
-func checkAdress(adress string) bool{
-	_, err := net.ResolveTCPAddr("tcp", adress)
-	if err != nil{
+func checkAddress(listenAddress string) bool {
+	_, err := net.ResolveTCPAddr("tcp", listenAddress)
+	if err != nil {
 		return false
 	}
 	return true
+
+}
+
+func initConfig() {
+	viper.SetConfigName("app")
+	viper.AddConfigPath(".") // 添加搜索路径
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
 
 }
